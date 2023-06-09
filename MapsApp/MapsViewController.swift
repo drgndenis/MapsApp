@@ -38,6 +38,81 @@ class MapsViewController: UIViewController, MKMapViewDelegate, CLLocationManager
         gestureRecognizer.minimumPressDuration = 3
         mapView.addGestureRecognizer(gestureRecognizer)
         
+        addData()
+    }
+    
+    
+    @objc func selectLocation(gestureRecognizer : UILongPressGestureRecognizer) {
+        if gestureRecognizer.state == .began {
+            let touchedLocation = gestureRecognizer.location(in: mapView)
+            let touchedCoordinate  = mapView.convert(touchedLocation, toCoordinateFrom: mapView)
+            selectedLatitude = touchedCoordinate.latitude
+            selectedLongitude = touchedCoordinate.longitude
+            
+            // Pin ekleme
+            let annotation = MKPointAnnotation()
+            annotation.coordinate = touchedCoordinate
+            annotation.title = nameTextFields.text
+            annotation.subtitle = notesTextField.text
+            mapView.addAnnotation(annotation)
+        }
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        print(locations[0].coordinate.latitude)  // Enlem oranlari
+        print(locations[0].coordinate.longitude)  // Boylam oranlari
+        if selectedName == "" {
+            let location = CLLocationCoordinate2D(latitude: locations[0].coordinate.latitude, longitude: locations[0].coordinate.longitude)
+            let span = MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05) // Harita acildiginda var olan konumun ne kadar yakin veya uzak gosterecegi
+            let region = MKCoordinateRegion(center: location, span: span) // Konum degisikligi
+            mapView.setRegion(region, animated: true)
+        }
+    }
+    
+    //MARK: Special Annotation
+    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+        if annotation is MKUserLocation {
+            return nil
+        }
+        
+        let annotationID = "myAnnotation"
+        var pinView = mapView.dequeueReusableAnnotationView(withIdentifier: annotationID)
+        
+        if pinView == nil {
+            pinView = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: annotationID)
+            pinView?.canShowCallout = true
+            pinView?.tintColor = .darkGray
+            
+            let button = UIButton(type: .detailDisclosure)
+            pinView?.rightCalloutAccessoryView = button
+        } else {
+            pinView?.annotation = annotation
+        }
+        return pinView
+    }
+    
+    //MARK: Special annotation icinde verilen butonun yapacaklari
+    func mapView(_ mapView: MKMapView, annotationView view: MKAnnotationView, calloutAccessoryControlTapped control: UIControl) {
+        if selectedName != "" {
+            let requestLocation = CLLocation(latitude: annotationLatitude, longitude: annotationLongitude) // Harita olusturma
+            CLGeocoder().reverseGeocodeLocation(requestLocation) { (placemarkArray, error) in
+                if let placemarks = placemarkArray {
+                    if placemarks.count > 0 {
+                        let newPlacemark = MKPlacemark(placemark: placemarks[0])
+                        let item = MKMapItem(placemark: newPlacemark)
+                        item.name = self.annotationTitle
+                        
+                        // Navigasyonu yani Harita appini acma
+                        let launchOptions = [MKLaunchOptionsDirectionsModeKey : MKLaunchOptionsDirectionsModeDriving]
+                        item.openInMaps(launchOptions: launchOptions)
+                    }
+                }
+            }
+        }
+    }
+    
+    // Core Data'dan veri cekme, ekleme
+    func addData() {
         if selectedName != "" {
             // Core Data'dan verileri cek
             if let uuidString = selectedId?.uuidString {
@@ -94,56 +169,6 @@ class MapsViewController: UIViewController, MKMapViewDelegate, CLLocationManager
         }
     }
     
-    
-    @objc func selectLocation(gestureRecognizer : UILongPressGestureRecognizer) {
-        if gestureRecognizer.state == .began {
-            let touchedLocation = gestureRecognizer.location(in: mapView)
-            let touchedCoordinate  = mapView.convert(touchedLocation, toCoordinateFrom: mapView)
-            selectedLatitude = touchedCoordinate.latitude
-            selectedLongitude = touchedCoordinate.longitude
-            
-            // Pin ekleme
-            let annotation = MKPointAnnotation()
-            annotation.coordinate = touchedCoordinate
-            annotation.title = nameTextFields.text
-            annotation.subtitle = notesTextField.text
-            mapView.addAnnotation(annotation)
-        }
-    }
-    
-    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        print(locations[0].coordinate.latitude)  // Enlem oranlari
-        print(locations[0].coordinate.longitude)  // Boylam oranlari
-        if selectedName == "" {
-            let location = CLLocationCoordinate2D(latitude: locations[0].coordinate.latitude, longitude: locations[0].coordinate.longitude)
-            let span = MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05) // Harita acildiginda var olan konumun ne kadar yakin veya uzak gosterecegi
-            let region = MKCoordinateRegion(center: location, span: span) // Konum degisikligi
-            mapView.setRegion(region, animated: true)
-        }
-    }
-    
-    //MARK: Special Annotation
-    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
-        if annotation is MKUserLocation {
-            return nil
-        }
-        
-        let annotationID = "myAnnotation"
-        var pinView = mapView.dequeueReusableAnnotationView(withIdentifier: annotationID)
-        
-        if pinView == nil {
-            pinView = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: annotationID)
-            pinView?.canShowCallout = true
-            pinView?.tintColor = .darkGray
-            
-            let button = UIButton(type: .detailDisclosure)
-            pinView?.rightCalloutAccessoryView = button
-        } else {
-            pinView?.annotation = annotation
-        }
-        return pinView
-    }
-    
     @IBAction func savePressed(_ sender: Any) {
         let appDelegate = UIApplication.shared.delegate as! AppDelegate
         let context = appDelegate.persistentContainer.viewContext
@@ -163,7 +188,5 @@ class MapsViewController: UIViewController, MKMapViewDelegate, CLLocationManager
         //MARK: Veriyi girdikten sonra kaydet butonuna basildiginda ListView'a yonlendirmek icin
         NotificationCenter.default.post(name: NSNotification.Name("newLocationCreated"), object: nil)
         navigationController?.popViewController(animated: true)
-        
-        
     }
 }
