@@ -122,6 +122,28 @@ class MapsViewController: UIViewController, MKMapViewDelegate, CLLocationManager
         }
     }
     
+    //MARK: Special Annotation
+    func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+        if annotation is MKUserLocation {
+            return nil
+        }
+        
+        let annotationID = "myAnnotation"
+        var pinView = mapView.dequeueReusableAnnotationView(withIdentifier: annotationID)
+        
+        if pinView == nil {
+            pinView = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: annotationID)
+            pinView?.canShowCallout = true
+            pinView?.tintColor = .darkGray
+            
+            let button = UIButton(type: .detailDisclosure)
+            pinView?.rightCalloutAccessoryView = button
+        } else {
+            pinView?.annotation = annotation
+        }
+        return pinView
+    }
+    
     @IBAction func savePressed(_ sender: Any) {
         let appDelegate = UIApplication.shared.delegate as! AppDelegate
         let context = appDelegate.persistentContainer.viewContext
@@ -138,5 +160,10 @@ class MapsViewController: UIViewController, MKMapViewDelegate, CLLocationManager
         } catch {
             print("Error")
         }
+        //MARK: Veriyi girdikten sonra kaydet butonuna basildiginda ListView'a yonlendirmek icin
+        NotificationCenter.default.post(name: NSNotification.Name("newLocationCreated"), object: nil)
+        navigationController?.popViewController(animated: true)
+        
+        
     }
 }

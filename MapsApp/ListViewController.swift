@@ -26,12 +26,17 @@ class ListViewController: UIViewController, UITableViewDelegate, UITableViewData
         getData()
     }
     
+    // Datanin tableView'a girisi
+    override func viewWillAppear(_ animated: Bool) {
+        NotificationCenter.default.addObserver(self, selector: #selector(getData), name: NSNotification.Name("newLocationCreated"), object: nil)
+    }
+    
     @objc func addLocation() {
         selectedLocName = "" // Navbar'dan butona tiklandiginda bos veri gonderiyoruz ve MapsView uzerinde ekleme yapilacak
         performSegue(withIdentifier: "toMapsVC", sender: nil)
     }
     
-    func getData() {
+    @objc func getData() {
         let appDelegate = UIApplication.shared.delegate as! AppDelegate
         let context = appDelegate.persistentContainer.viewContext
         
